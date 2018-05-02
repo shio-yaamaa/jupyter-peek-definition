@@ -1,0 +1,14 @@
+{
+  "name": "Jupyter Notebook Peek Definition",
+  "version": "1.0",
+  "description": "View the definitions and references of class, function, or variable in Jupyter Notebook",
+  "permissions": ["activeTab"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*ipynb*", "https://*/*.ipynb*"],
+      "js": ["script.js", "ui.js"]
+    }
+  ],
+  "manifest_version": 2
+  //"icons": {}
+}
