@@ -1,3 +1,6 @@
+// TODO: たぶんだけど、そのlineがplain textで始まったらうまく取得できていない
+// 一段深い時ととそうでないときがあるから、相対的ではいけない
+
 const countCharacter = (string, character) => {
 	let count = 0;
 	let slicedString = string;
@@ -60,7 +63,7 @@ const collectSpansWithText = text => {
 
 // 右のをどんどん集めるだけなので\もスキップしない
 // TODO: continueToNextLine: continue no matter. When there was "[" and "{"
-const getNextNode = (node, ignoreColon) => {
+const getNextNode = (node, continueToNextLine) => {
 	if (node.textContent.includes(';')) {
 		return null;
 	}
@@ -72,7 +75,7 @@ const getNextNode = (node, ignoreColon) => {
 	let firstNodeInNextLine = null;
 	if (!nextNode) {
 		const nextLine = node.parentNode.parentNode.nextSibling; // Not the span but the div outside
-		if (nextLine && nextLine.children.length > 0 && nextLine.firstChild.children.length > 0) { // Next line and its children exist
+		if (nextLine && nextLine.children.length > 0 && nextLine.firstChild.childNodes.length > 0) { // Next line and its children exist
 			firstNodeInNextLine = nextLine.firstChild.firstChild;
 			if (firstNodeInNextLine && firstNodeInNextLine.textContent.trim().length === 0) { // firstNodeInNextLine is whitespace
 				firstNodeInNextLine = firstNodeInNextLine.nextSibling;
@@ -85,10 +88,7 @@ const getNextNode = (node, ignoreColon) => {
 			return null;
 		}
 	} else { // nextNode doesn't exist
-		if (node.textContent.match(/[\\([{,]\s*$/)) {
-			return firstNodeInNextLine;
-		}
-		if (!ignoreColon && node.textContent.trim().endsWith(':')) {
+		if (node.textContent.trim().endsWith("\\") || continueToNextLine) {
 			return firstNodeInNextLine;
 		}
 	}
@@ -113,6 +113,7 @@ const hasAssignmentEqualSign = span => {
 };
 
 // Definition or reassignment => true, else => false
+/*
 const checkIfDefinition = (span, isVariable) => {
 	console.log('checkIfDefinition', span, 'isVariable=', isVariable);
 	if (isVariable) {
@@ -141,33 +142,17 @@ const checkIfDefinition = (span, isVariable) => {
 	} else { // Class, method, or function
 		return span.classList.contains('cm-def');
 	}
-};
+};*/
 
 const findAncestorWithClassName = (element, className) => {
   while ((element = element.parentElement) && !element.classList.contains(className)) {}
   return element;
 };
 
-/*
-cells = [
-	{
-		cell: DOM Element with class 'CodeMirror-code',
-		spans: [
-			{
-				span: DOM Element,
-				isDefinition: Boolean
-			},
-			...
-		]
-	},
-	...
-]
-*/
-const createCells = (spans, isVariable) => {
+const createCells = spans => {
 	const spanObjects = spans.map(span => {
 		return {
 			span: span,
-			isDefinition: checkIfDefinition(span, isVariable)
 		};
 	});
 	const cells = [];
@@ -185,6 +170,87 @@ const createCells = (spans, isVariable) => {
 	return cells;
 };
 
+// Definition or reassignment => true, else => false
+const checkIfDefinition = (cells, isVariable) => {
+	if (isVariable) {
+		for (const cellObject of cells) {
+			// Assign line property (an array of nodes) for each span
+			let previousNode = null; // For reassignment of currentNode
+			let currentNode = cellObject.cell.children[0].children[0].childNodes[0];
+			let spanInCellIndex = 0;
+			while (spanInCellIndex < cellObject.spans.length) { // Loop through lines as long as there are more spans left
+				const nodesInLine = [];
+				let openParenthesisCount = 0;
+				let openBracketCount = 0;
+				let openBraceCount = 0;
+				while (currentNode) { // Loop through the nodes in the line
+					nodesInLine.push(currentNode);
+					if (spanInCellIndex < cellObject.spans.length && currentNode === cellObject.spans[spanInCellIndex].span) {
+						cellObject.spans[spanInCellIndex].line = nodesInLine;
+						spanInCellIndex++;
+					}
+					// Count the number of parentheses to decide whether to go to the next line
+					if (!currentNode.classList || !currentNode.classList.contains('cm-string')) { // currentNode is plain text or span other than cm-string
+						openParenthesisCount = openParenthesisCount
+							+ countCharacter(currentNode.textContent, '(') - countCharacter(currentNode.textContent, ')');
+						openBracketCount = openBracketCount
+							+ countCharacter(currentNode.textContent, '[') - countCharacter(currentNode.textContent, ']');
+						openBraceCount = openBraceCount
+							+ countCharacter(currentNode.textContent, '{') - countCharacter(currentNode.textContent, '}');
+					}
+					// Reassign previousNode and currentNode
+					previousNode = currentNode;
+					currentNode = getNextNode(
+						currentNode,
+						openParenthesisCount > 0 ||openBracketCount > 0 || openBraceCount > 0
+					);
+				}
+				currentNode = getNextNode(previousNode, true); // Go to the next line in the next loop
+			}
+			
+			// Assign ifDefinition property for each span based on the line
+			for (const spanObject of cellObject.spans) {
+				// Get the index of the span and the equal sign in the line
+				const spanIndex = spanObject.line.reduce((accumulator, currentNode) => {
+					return currentNode === spanObject.span ? currentNode : accumulator;
+				});
+				const equalSignSpanIndex = spanObject.line.reduce((accumulator, currentNode) => {
+					return hasAssignmentEqualSign(currentNode) ? currentNode : accumulator;
+				}, null);
+
+				// If there is no equal sign or an equal sign appears before the span
+				if (!Boolean(equalSignSpanIndex) || equalSignSpanIndex < spanIndex) {
+					spanObject.isDefinition = false;
+					continue;
+				}
+
+				// If there is an equal sign after the span
+				let openBracketCount = 0;
+				let openBraceCount = 0;
+				for (const nodeInLine of spanObject.line) {
+					if (nodeInLine === spanObject) {
+						break;
+					}
+					if (!nodeInLine.classList || !nodeInLine.classList.contains('cm-string')) { // nodeInLine is plain text or span other than cm-string
+						openBracketCount = openBracketCount
+							+ countCharacter(nodeInLine.textContent, '[') - countCharacter(nodeInLine.textContent, ']');
+						openBraceCount = openBraceCount
+							+ countCharacter(nodeInLine.textContent, '{') - countCharacter(nodeInLine.textContent, '}');
+					}
+				}
+				spanObject.isDefinition = openBracketCount === 0 && openBraceCount === 0;
+			}
+		}
+	} else {
+		for (const cellObject of cells) {
+			for (const spanObject of cellObject.spans) {
+				spanObject.isDefinition = spanObject.span.classList.contains('cm-def');
+			}
+		}
+	}
+	return cells;
+};
+
 let previousSelectedText;
 
 // TODO: Why does it have to be an ordinary function instead of fat arrow function?
@@ -195,11 +261,28 @@ document.addEventListener('selectionchange', function () {
 		const spans = collectSpansWithText(selectedText);
 		if (spans.length > 0) {
 			const isVariable = spans.every(span => !span.classList.contains('cm-def'));
-			const cells = createCells(spans, isVariable);
-			console.log(cells);
+			const cells = checkIfDefinition(createCells(spans), isVariable);
+			console.log('cells', cells);
 			showButtons(cells);
 		} else {
 			hide();
 		}
 	}
 });
+
+/*
+cells = [
+	{
+		cell: DOM Element with class 'CodeMirror-code',
+		spans: [
+			{
+				span: DOM Element,
+				(line: Array of nodes,) only when isVariable is true
+				isDefinition: Boolean
+			},
+			...
+		]
+	},
+	...
+]
+*/

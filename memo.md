@@ -65,7 +65,7 @@ something, {'a':
 
 0.
 
-<div class="code_cell"> (contains output) <-> "text_cell"
+<div class="code_cell"> (contains output) <-> "text_cell" (Markdown)
 	...
 	<div class="CodeMirror-code"> <- cell
 		<pre class="CodeMirror-line"> <- line
@@ -100,6 +100,12 @@ How??
 injectionされる恐れはないのか？
 
 ()を探すとき、決してspanに入っていないと決めつけてはならない。緑にハイライトされているときはspanに入っているから。
+
+# UI
+
+## Syntax Highlighting
+
+CodeMirror's default syntax colors are defined in ```/user/???/static/components/codemirror/lib/codemirror.css```. In Jupyter Notebook, this style is only applied to the Markdown cells (tabun??). Code cells use a style defined in ```/user/???/static/style/style.min.css```.
 
 # Problems
 
