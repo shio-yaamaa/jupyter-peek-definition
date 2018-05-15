@@ -6,7 +6,8 @@
   "content_scripts": [
     {
       "matches": ["http://*/*ipynb*", "https://*/*.ipynb*"],
-      "js": ["script.js", "ui.js"]
+      "css": ["style.css"],
+      "js": ["script.js", "ui.js", "button-icons.js"]
     }
   ],
   "manifest_version": 2

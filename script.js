@@ -1,6 +1,3 @@
-// TODO: たぶんだけど、そのlineがplain textで始まったらうまく取得できていない
-// 一段深い時ととそうでないときがあるから、相対的ではいけない
-
 const countCharacter = (string, character) => {
 	let count = 0;
 	let slicedString = string;
@@ -23,46 +20,6 @@ const collectSpansWithText = text => {
 	return spans;
 };
 
-// Skips whitespaces
-// Returns null if the previous node ends with ';'
-// Returns the second last node in the previous line if the given node is
-// the first node in the line and the last node in the previous line is '\'
-// If the given node is the first node in the line and
-// Ignores ',', ':', '[', '(' etc.
-/*const getPreviousNode = node => {
-	if (node.textContent.includes(';')) {
-		return null;
-	}
-
-	let previousNode = node.previousSibling;
-	if (previousNode && previousNode.textContent.trim().length === 0) { // previousNode is whitespace
-		previousNode = previousNode.previousSibling;
-	}
-	let lastNodeInPreviousLine = null;
-	if (!previousNode) {
-		const previousLine = node.parentNode.parentNode.previousSibling; // Not the span but the div outside
-		if (previousLine && previousLine.children.length > 0 && previousLine.firstChild.children.length > 0) { // Previous line and its children exist
-			lastNodeInPreviousLine = previousLine.firstChild.lastChild;
-			if (lastNodeInPreviousLine && lastNodeInPreviousLine.textContent.trim().length === 0) { // lastNodeInPreviousLine is whitespace
-				lastNodeInPreviousLine = lastNodeInPreviousLine.previousSibling;
-			}
-		}
-	}
-
-	if (previousNode) {
-		if (previousNode.textContent.trim().endsWith(';')) {
-			return null;
-		}
-	} else { // previousNode doesn't exist
-		if (lastNodeInPreviousLine && lastNodeInPreviousLine.textContent === "\\") {
-			return getPreviousNode(lastNodeInPreviousLine);
-		}
-	}
-	return previousNode;
-};*/
-
-// 右のをどんどん集めるだけなので\もスキップしない
-// TODO: continueToNextLine: continue no matter. When there was "[" and "{"
 const getNextNode = (node, continueToNextLine) => {
 	if (node.textContent.includes(';')) {
 		return null;
@@ -111,38 +68,6 @@ const hasAssignmentEqualSign = span => {
 		return false;
 	}
 };
-
-// Definition or reassignment => true, else => false
-/*
-const checkIfDefinition = (span, isVariable) => {
-	console.log('checkIfDefinition', span, 'isVariable=', isVariable);
-	if (isVariable) {
-		let encounteredAssignmentEqualSign = false;
-		// Do not count parentheses
-		let openBracketCount = 0;
-		let openBraceCount = 0;
-		let nextNode = span;
-		while (nextNode = getNextNode(nextNode, openBraceCount <= 0)) {
-			if (!nextNode.classList || !nextNode.classList.contains('cm-string')) { // nextNode is plain text or span other than cm-string
-				const nodeContainsAssignmentEqualSign = hasAssignmentEqualSign(nextNode);
-				const textBeforeAssignmentEqualSign = nodeContainsAssignmentEqualSign
-					? nextNode.textContent.slice(0, nextNode.textContent.indexOf('='))
-					: nextNode.textContent;
-				openBracketCount = openBracketCount
-					+ countCharacter(nextNode.textContent, '[') - countCharacter(nextNode.textContent, ']');
-				openBraceCount = openBraceCount
-					+ countCharacter(nextNode.textContent, '{') - countCharacter(nextNode.textContent, '}');
-				if (nodeContainsAssignmentEqualSign) {
-					encounteredAssignmentEqualSign = true;
-					break;
-				}
-			}
-		}
-		return encounteredAssignmentEqualSign && openBracketCount === 0 && openBraceCount === 0;
-	} else { // Class, method, or function
-		return span.classList.contains('cm-def');
-	}
-};*/
 
 const findAncestorWithClassName = (element, className) => {
   while ((element = element.parentElement) && !element.classList.contains(className)) {}
@@ -253,7 +178,7 @@ const checkIfDefinition = (cells, isVariable) => {
 
 let previousSelectedText;
 
-// TODO: Why does it have to be an ordinary function instead of fat arrow function?
+// TODO: Why does this have to be an ordinary function instead of a fat arrow function?
 document.addEventListener('selectionchange', function () {
 	const selectedText = window.getSelection().toString();
 	if (selectedText != previousSelectedText) {

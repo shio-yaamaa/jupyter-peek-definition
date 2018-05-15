@@ -1,4 +1,32 @@
-2 buttons
+# Todo
+
+- Highlight the definitions and the references
+
+- Markers on the scroll bar
+
+- Make the buttons functional
+
+- getNextNode might not be able to deal with ```;```
+
+# DOM Structure
+
+```html
+<button definition-button>
+<button reference-button>
+
+<main-window>
+	<menu-bar>
+		<jump-to-cell-button>
+		<close-button>
+	<cell-container>
+	<page-button-container>
+		<page-button>
+		...
+```
+
+# System
+
+Two buttons
 - Assignments (Red)
 - Uses (Blue)
 Highlight keywords with the corresponding color
@@ -97,15 +125,34 @@ How??
 	&& 自分の後にcm-stringに入っていない=がある
 	&& その=は==だったり<=だったり(cm-operator(<, >, !)に後続したり)しない
 
-injectionされる恐れはないのか？
+injectionの恐れはないのか？
 
 ()を探すとき、決してspanに入っていないと決めつけてはならない。緑にハイライトされているときはspanに入っているから。
 
 # UI
 
+## Code cell's background and border
+
+```.input_area``` has the background and the border.
+
+## Pre
+
+```.CodeMirror pre``` defines the style of the lines in the code cells.
+```.CodeMirror``` is set to the div inside the ```.input_area``` div.
+
 ## Syntax Highlighting
 
 CodeMirror's default syntax colors are defined in ```/user/???/static/components/codemirror/lib/codemirror.css```. In Jupyter Notebook, this style is only applied to the Markdown cells (tabun??). Code cells use a style defined in ```/user/???/static/style/style.min.css```.
+
+The ancestor has to have the class ```.cm-s-ipython```. This class is set to the div inside the ```.input_area``` div.
+
+## Horizontal Scroll
+
+The grandchild of ```.input_area```, ```.CodeMirror-hscrollbar```, controlls the horizontal scroll bar.
+
+## Cell Padding
+
+```.CodeMirror-lines``` has the padding.
 
 # Problems
 
